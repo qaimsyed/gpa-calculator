@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPA Calculator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 80px 10px 80px; /* bottom space so the fixed footer never covers content */
+      max-width: 700px;
+      margin: auto;
+      position: relative;
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: #007BFF;
+      color: white;
+      padding: 15px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+    }
+
+    .title {
+      font-size: 1.2rem;
+      text-align: center;
+      flex: 1;
+    }
+
+    .subject {
+      margin-bottom: 10px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      opacity: 0;
+      transform: translateY(10px);
+      animation: fadeSlideIn 0.5s forwards;
+      border: 1px solid #007BFF;
+    }
+
+    @keyframes fadeSlideIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    input, select {
+      padding: 10px;
+      margin: 8px 0;
+      width: 100%;
+      max-width: 300px;
+      border: 1px solid #007BFF;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 10px 15px;
+      margin: 10px 5px;
+      background-color: #007BFF;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      width: 100%;
+      max-width: 180px;
+      border: 2px solid #007BFF;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+      transform: scale(1.05);
+      border-color: #0056b3;
+    }
+
+    button.remove-btn {
+      background-color: #dc3545;
+      border-color: #dc3545;
+      max-width: 120px;
+      margin: 5px 0 0;
+    }
+
+    button.remove-btn:hover {
+      background-color: #b02a37;
+      border-color: #b02a37;
+    }
+
+    #result {
+      margin-top: 20px;
+      font-size: 1.2em;
+      font-weight: bold;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: fadeSlideIn 0.5s forwards;
+      padding-top: 10px;
+    }
+
+    #pdf-content {
+      padding: 10px;
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      border: 1px solid #007BFF;
+    }
+
+    ul#gpa-summary {
+      padding-left: 20px;
+    }
+
+    @media screen and (max-width: 600px) {
+      body {
+        padding-top: 110px;
+      }
+
+      header {
+        flex-direction: column;
+        padding: 20px 10px;
+      }
+
+      .title {
+        font-size: 1rem;
+      }
+
+      button {
+        width: 90%;
+        margin-bottom: 10px;
+      }
+
+      input, select {
+        width: 90%;
+      }
+    }
+
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: #007BFF;
+      color: white;
+      padding: 10px 20px;
+      font-size: 1rem;
+      text-align: center;
+      box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="title">GPA Calculator</div>
+  </header>
+
+  <div id="subjects-container"></div>
+
+  <div style="text-align:center;">
+    <button onclick="addSubject()">+ Add Subject</button>
+    <button onclick="calculateGPA()">Calculate GPA</button>
+    <button onclick="downloadPDF()">Save as PDF</button>
+  </div>
+
+  <div id="result"></div>
+
+  <div id="pdf-content" style="display:none;">
+    <h3>GPA Summary</h3>
+    <ul id="gpa-summary"></ul>
+    <p id="gpa-value"></p>
+  </div>
+
+  <footer>
+    Developed by Qaim Ali
+  </footer>
+
+  <script>
+    // Edit these values if your university uses a different scale
+    const gradeMap = {
+      'A': 4.0, 'A-': 3.7, 'B+': 3.3, 'B': 3.0, 'B-': 2.7,
+      'C+': 2.3, 'C': 2.0, 'C-': 1.7, 'D': 1.0, 'F': 0.0
+    };
+
+    function addSubject() {
+      const container = document.getElementById('subjects-container');
+
+      const div = document.createElement('div');
+      div.className = 'subject';
+      div.innerHTML = `
+        <input type="text" placeholder="Subject Name" class="subject-name">
+        <input type="number" placeholder="Credit Hours" class="credit-hours" min="0.5" step="0.5">
+        <select class="grade">
+          <option value="">Grade</option>
+          <option value="A">A</option>
+          <option value="A-">A-</option>
+          <option value="B+">B+</option>
+          <option value="B">B</option>
+          <option value="B-">B-</option>
+          <option value="C+">C+</option>
+          <option value="C">C</option>
+          <option value="C-">C-</option>
+          <option value="D">D</option>
+          <option value="F">F</option>
+        </select>
+        <button class="remove-btn" onclick="removeSubject(this)">Remove</button>
+      `;
+
+      container.appendChild(div);
+    }
+
+    function removeSubject(btn) {
+      btn.closest('.subject').remove();
+    }
+
+    // Returns true if the GPA was calculated, false if something was wrong
+    function calculateGPA() {
+      const names = document.querySelectorAll('.subject-name');
+      const credits = document.querySelectorAll('.credit-hours');
+      const grades = document.querySelectorAll('.grade');
+
+      if (names.length === 0) {
+        alert("Please add at least one subject.");
+        return false;
+      }
+
+      let totalPoints = 0, totalCredits = 0;
+      const summary = document.getElementById('gpa-summary');
+      summary.innerHTML = "";
+
+      for (let i = 0; i < names.length; i++) {
+        const name = names[i].value.trim();
+        const credit = parseFloat(credits[i].value);
+        const grade = grades[i].value;
+
+        // credit must be above 0, otherwise we could divide by zero
+        if (!name || isNaN(credit) || credit <= 0 || !gradeMap.hasOwnProperty(grade)) {
+          alert("Please fill out all fields correctly (credit hours must be more than 0).");
+          return false;
+        }
+
+        totalPoints += gradeMap[grade] * credit;
+        totalCredits += credit;
+
+        const li = document.createElement("li");
+        li.textContent = `${name} — Grade: ${grade} | Credits: ${credit}`;
+        summary.appendChild(li);
+      }
+
+      const gpa = (totalPoints / totalCredits).toFixed(2);
+      const result = document.getElementById('result');
+      const gpaValue = document.getElementById('gpa-value');
+
+      result.innerText = `Your GPA is: ${gpa}`;
+      gpaValue.innerText = `Your GPA is: ${gpa} (Total credits: ${totalCredits})`;
+
+      // restart the animation
+      result.style.opacity = '0';
+      result.style.animation = 'none';
+      void result.offsetWidth;
+      result.style.animation = 'fadeSlideIn 0.5s forwards';
+
+      return true;
+    }
+
+    function downloadPDF() {
+      // Recalculate first so the PDF always matches what is on screen
+      if (!calculateGPA()) return;
+
+      const pdfContent = document.getElementById("pdf-content");
+      pdfContent.style.display = "block";
+
+      // Hide the box again only AFTER the PDF has finished being made
+      html2pdf()
+        .set({ margin: 10, filename: "GPA_Report.pdf" })
+        .from(pdfContent)
+        .save()
+        .then(() => { pdfContent.style.display = "none"; })
+        .catch(() => { pdfContent.style.display = "none"; });
+    }
+
+    addSubject(); // Start with one subject
+  </script>
+
+</body>
+</html>
